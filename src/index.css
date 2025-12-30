@@ -1,0 +1,207 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Antigravity Theme Variables */
+  --color-brand-base: #020617;
+  /* Midnight Core */
+  --color-brand-purple: #8B5CF6;
+  /* Lighter Violet for contrast against dark */
+  --color-brand-magenta: #EC4899;
+  /* Pink-500 for better glow */
+  --color-brand-orange: #F97316;
+  --color-brand-yellow: #FACC15;
+
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-surface: rgba(2, 6, 23, 0.7);
+  /* Darker, more opaque surface */
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--color-brand-base);
+  background-image:
+    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+  /* Premium Mesh Gradient Fallback */
+  color: var(--text-main);
+  line-height: 1.5;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Typography Overrides */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Playfair Display', serif;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+/* Glassmorphism Utilities */
+
+/* Main Floating Panel */
+.glass-panel {
+  background: rgba(2, 6, 23, 0.7);
+  /* Midnight Core with high opacity */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
+}
+
+/* Inner Cards */
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Primary Gradient Button */
+.btn-antigravity {
+  background: linear-gradient(135deg, var(--color-brand-purple), var(--color-brand-orange));
+  background-size: 200% 200%;
+  animation: gradient-shift 5s ease infinite;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background Texture Overlay - Adjusted for visibility */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--color-brand-base);
+  opacity: 0.2;
+  /* Reduced from 0.85 to 0.2 to allow backround image to be visible */
+  z-index: -2;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 0 15px rgba(219, 39, 119, 0.4);
+  /* Glow from magenta */
+  transition: all 0.3s ease;
+}
+
+.btn-antigravity:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 25px rgba(249, 115, 22, 0.6);
+  /* Glow from orange */
+  filter: brightness(1.1);
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%
+  }
+
+  50% {
+    background-position: 100% 50%
+  }
+
+  100% {
+    background-position: 0% 50%
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Force High Visibility Buttons */
+button {
+  transition: all 0.2s;
+}
+
+button.bg-brand-primary,
+button.bg-blue-600,
+button.bg-indigo-600 {
+  background-color: var(--color-brand-purple) !important;
+  background-image: linear-gradient(135deg, var(--color-brand-purple), var(--color-brand-orange)) !important;
+}
+
+/* Form Styles */
+.input-glass {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.input-glass:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.6);
+  border-color: var(--color-brand-purple);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-brand-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
