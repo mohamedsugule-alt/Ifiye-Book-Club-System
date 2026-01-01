@@ -2,9 +2,11 @@ import React, { useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useNavigate } from 'react-router-dom';
 import { Book, LayoutDashboard, Settings, GraduationCap, Search, PenTool } from 'lucide-react';
+import { useUser } from '../context/UserContext';
 
 const CommandPalette = ({ isOpen, setIsOpen }) => {
     const navigate = useNavigate();
+    const { currentUser } = useUser();
 
     // Toggle on Cmd+K
     useEffect(() => {
@@ -75,15 +77,17 @@ const CommandPalette = ({ isOpen, setIsOpen }) => {
                         </Command.Item>
                     </Command.Group>
 
-                    <Command.Group heading="System" className="text-xs text-brand-orange font-bold uppercase tracking-wider px-2 py-1 mb-1 mt-2">
-                        <Command.Item
-                            onSelect={() => runCommand(() => navigate('/admin'))}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-200 rounded-lg aria-selected:bg-brand-purple/20 aria-selected:text-white cursor-pointer transition-colors"
-                        >
-                            <Settings size={16} />
-                            <span>Admin Panel</span>
-                        </Command.Item>
-                    </Command.Group>
+                    {currentUser?.role === 'ADMIN' && (
+                        <Command.Group heading="System" className="text-xs text-brand-orange font-bold uppercase tracking-wider px-2 py-1 mb-1 mt-2">
+                            <Command.Item
+                                onSelect={() => runCommand(() => navigate('/admin'))}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-200 rounded-lg aria-selected:bg-brand-purple/20 aria-selected:text-white cursor-pointer transition-colors"
+                            >
+                                <Settings size={16} />
+                                <span>Admin Panel</span>
+                            </Command.Item>
+                        </Command.Group>
+                    )}
                 </Command.List>
 
                 <div className="border-t border-glass-border p-2 flex items-center justify-between text-[10px] text-glass-300 bg-black/40">

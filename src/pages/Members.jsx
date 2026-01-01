@@ -8,7 +8,7 @@ const Members = () => {
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-white">Member Directory</h2>
 
-            <div className="glass-panel overflow-hidden">
+            <div className="glass-panel overflow-hidden overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-white/10 bg-white/10 text-white/90 text-sm uppercase tracking-wider">

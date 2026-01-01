@@ -25,6 +25,17 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+const AdminRoute = ({ children }) => {
+  const { currentUser } = useUser();
+  const location = useLocation();
+
+  if (!currentUser || currentUser.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <Routes>
@@ -45,7 +56,14 @@ function App() {
                 <Route path="/events" element={<Events />} />
                 <Route path="/quotes" element={<Quotes />} />
                 <Route path="/academy" element={<Academy />} />
-                <Route path="/admin" element={<Admin />} />
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminRoute>
+                      <Admin />
+                    </AdminRoute>
+                  }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>

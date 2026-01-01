@@ -106,8 +106,8 @@ const Layout = ({ children }) => {
                         <NavItem to="/rankings" icon={Trophy} label="Leaderboard" />
                         <NavItem to="/peer-review" icon={Users} label="Peer Reviews" />
                         <NavItem to="/events" icon={Calendar} label="Events" />
-                        <NavItem to="/quotes" icon={Quote} label="Quotes" />
-                        {currentUser?.isAdmin && (
+
+                        {currentUser?.role === 'ADMIN' && (
                             <div className="mt-4 pt-4 border-t border-glass-border">
                                 <NavItem to="/admin" icon={LayoutDashboard} label="Admin Console" />
                             </div>
@@ -167,9 +167,16 @@ const Layout = ({ children }) => {
                             <nav className="space-y-4 flex-1">
                                 <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/" icon={LayoutDashboard} label="Dashboard" />
                                 <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/books" icon={BookOpen} label="Library" />
+                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/members" icon={Users} label="Members" />
                                 <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/log" icon={PenTool} label="Log Progress" />
-                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/quotes" icon={Quote} label="Quotes" />
-                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/vote" icon={Vote} label="Voting" />
+                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/academy" icon={GraduationCap} label="Academy" />
+                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/rankings" icon={Trophy} label="Leaderboard" />
+                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/peer-review" icon={Users} label="Peer Reviews" />
+                                <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/events" icon={Calendar} label="Events" />
+
+                                {currentUser?.role === 'ADMIN' && (
+                                    <NavItem onClick={() => setIsMobileMenuOpen(false)} to="/admin" icon={LayoutDashboard} label="Admin Console" />
+                                )}
                             </nav>
                             <button onClick={handleLogout} className="flex items-center gap-2 text-red-400 font-bold mt-8">
                                 <LogOut /> Logout

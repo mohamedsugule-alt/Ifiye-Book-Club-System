@@ -5,12 +5,13 @@ import { UserCheck, Shield, Send, CheckCircle, BookOpen } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 
 const PeerReview = () => {
-    const { members, activeSession, addPeerReview, sessions, books } = useBookClub();
+    const { members, activeSession, savePeerReview, peerReviews, sessions, books } = useBookClub();
     const [reviewSessionId, setReviewSessionId] = useState(activeSession?.id || (sessions.length > 0 ? sessions[0].id : ''));
     const [raterId, setRaterId] = useState(''); // Who is doing the rating?
     const [selectedPeerId, setSelectedPeerId] = useState('');
     const [step, setStep] = useState('SELECT'); // SELECT, RATE, SUCCESS
     const [formData, setFormData] = useState({
+        id: '', // Track ID for edits
         preparation: 5,
         contribution: 5,
         comment: ''
@@ -21,13 +22,35 @@ const PeerReview = () => {
     // Filter out inactive members AND the current rater (prevent self-rating)
     const eligiblePeers = members.filter(m => m.active && m.id !== raterId);
 
+    // Check if already reviewed (for UI status)
+    const getExistingReview = (peerId) => {
+        return peerReviews.find(r => r.raterId === raterId && r.rateeId === peerId && r.sessionId === reviewSessionId);
+    };
+
+    const handleSelectPeer = (peerId) => {
+        setSelectedPeerId(peerId);
+        const existing = getExistingReview(peerId);
+        if (existing) {
+            setFormData({
+                id: existing.id,
+                preparation: existing.prep,
+                contribution: existing.contrib,
+                comment: existing.comment || ''
+            });
+        } else {
+            setFormData({ id: '', preparation: 5, contribution: 5, comment: '' });
+        }
+        setStep('RATE');
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
 
         // Construct the review payload
         const review = {
+            id: formData.id || undefined, // undefined triggers new ID generation in Context if needed
             sessionId: reviewSessionId,
-            raterId: raterId, // Now we track who rated
+            raterId: raterId,
             rateeId: selectedPeerId,
             prep: formData.preparation,
             contrib: formData.contribution,
@@ -35,15 +58,15 @@ const PeerReview = () => {
             timestamp: new Date().toISOString()
         };
 
-        addPeerReview(review);
+        savePeerReview(review);
         setStep('SUCCESS');
 
         // Reset after delay
         setTimeout(() => {
             setStep('SELECT');
             setSelectedPeerId('');
-            setFormData({ preparation: 5, contribution: 5, comment: '' });
-        }, 2000);
+            setFormData({ id: '', preparation: 5, contribution: 5, comment: '' });
+        }, 1500);
     };
 
     if (!reviewSessionId) {
@@ -110,21 +133,29 @@ const PeerReview = () => {
                     >
                         <h3 className="text-xl font-bold text-white">Select a Member to Rate</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {eligiblePeers.map(m => (
-                                <button
-                                    key={m.id}
-                                    onClick={() => { setSelectedPeerId(m.id); setStep('RATE'); }}
-                                    className="p-4 glass-card hover:border-brand-primary/50 hover:shadow-lg hover:shadow-brand-primary/10 transition-all flex items-center gap-4 text-left group"
-                                >
-                                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center font-bold text-white group-hover:bg-brand-primary group-hover:text-white transition-colors">
-                                        {m.name.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-white group-hover:text-brand-primary transition-colors">{m.name}</p>
-                                        <p className="text-xs text-glass-400">{m.role}</p>
-                                    </div>
-                                </button>
-                            ))}
+                            {eligiblePeers.map(m => {
+                                const existing = getExistingReview(m.id);
+                                return (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => handleSelectPeer(m.id)}
+                                        className={`p-4 glass-card hover:border-brand-primary/50 hover:shadow-lg hover:shadow-brand-primary/10 transition-all flex items-center gap-4 text-left group ${existing ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}
+                                    >
+                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center font-bold text-white group-hover:bg-brand-primary group-hover:text-white transition-colors relative">
+                                            {m.name.substring(0, 2).toUpperCase()}
+                                            {existing && (
+                                                <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full p-1 border-2 border-[#1a1b26]">
+                                                    <CheckCircle size={10} className="text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-white group-hover:text-brand-primary transition-colors">{m.name}</p>
+                                            <p className="text-xs text-glass-400">{existing ? 'Reviewed (Click to Edit)' : m.role}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </Motion.div>
                 )}
@@ -141,7 +172,7 @@ const PeerReview = () => {
                         <div className="glass-panel p-8 shadow-xl shadow-brand-primary/10">
                             <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
                                 <div>
-                                    <h3 className="text-2xl font-bold text-white">Rating Criteria</h3>
+                                    <h3 className="text-2xl font-bold text-white">{formData.id ? 'Edit Evaluation' : 'New Evaluation'}</h3>
                                     <p className="text-glass-400 text-sm">Be honest and constructive.</p>
                                 </div>
                                 <button onClick={() => setStep('SELECT')} className="text-sm font-bold text-glass-500 hover:text-white transition-colors">Change Member</button>
@@ -194,7 +225,7 @@ const PeerReview = () => {
                                     type="submit"
                                     className="btn-antigravity w-full py-4 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-primary/20 hover:shadow-brand-primary/30 hover:-translate-y-0.5"
                                 >
-                                    <Send size={20} /> Submit Evaluation
+                                    <Send size={20} /> {formData.id ? 'Update Evaluation' : 'Submit Evaluation'}
                                 </button>
                             </form>
                         </div>
@@ -209,7 +240,7 @@ const PeerReview = () => {
                         <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 mb-6 border border-emerald-500/30">
                             <CheckCircle size={48} />
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Evaluation Recorded</h3>
+                        <h3 className="text-2xl font-bold text-white mb-2">{formData.id ? 'Evaluation Updated' : 'Evaluation Recorded'}</h3>
                         <p className="text-glass-400 font-medium">Thank you for maintaining club standards.</p>
                     </Motion.div>
                 )}

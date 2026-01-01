@@ -375,42 +375,9 @@ const Dashboard = () => {
                 {/* Sidebar / Context */}
                 <div className="space-y-6">
                     {/* Discussion Forge Widget */}
-                    <div className="glass-card p-6 border-0">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <MessageSquare className="text-brand-primary" size={18} /> Discussion Forge
-                            </h3>
-                            <button
-                                onClick={() => setShowDiscussionModal(true)}
-                                className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition font-bold"
-                            >
-                                + Add
-                            </button>
-                        </div>
 
-                        <div className="space-y-3">
-                            {discussionPoints && discussionPoints.length > 0 ? (
-                                discussionPoints.slice(-3).reverse().map(dp => (
-                                    <div key={dp.id} className="p-3 rounded-xl bg-black/20 border border-white/5 flex gap-3 items-start">
-                                        <button
-                                            onClick={() => voteDiscussionPoint(dp.id)}
-                                            className="flex flex-col items-center gap-0.5 min-w-[24px] text-glass-400 hover:text-brand-primary transition"
-                                        >
-                                            <ChevronUp size={16} />
-                                            <span className="font-bold text-xs">{dp.upvotes}</span>
-                                        </button>
-                                        <div>
-                                            <p className="text-white/90 text-xs leading-relaxed line-clamp-2">{dp.text}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-glass-400 italic text-xs text-center py-2">No talking points yet.</p>
-                            )}
-                        </div>
-                    </div>
 
-                    <div className="glass-card p-6 bg-gradient-to-br from-brand-primary to-orange-600 border-0 text-white shadow-[0_10px_40px_-10px_rgba(249,115,22,0.5)]">
+                    <div className="glass-card p-6 bg-gradient-to-br from-orange-500 to-orange-700 border-0 text-white shadow-[0_10px_40px_-10px_rgba(249,115,22,0.6)]">
                         <h3 className="text-lg font-bold mb-2">Current Leader</h3>
                         {leaderboard[0] && leaderboard[0].stats && leaderboard[0].stats.score > 0 ? (
                             <div className="mt-4">

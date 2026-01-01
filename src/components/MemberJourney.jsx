@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Circle, ArrowRight, User, BookOpen, MessageSquare, Calendar } from 'lucide-react';
+import { CheckCircle, Circle, ArrowRight, User, BookOpen, MessageSquare, Calendar, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const MemberJourney = ({ member, activeSession, logs, discussionPoints, quotes }) => {
@@ -25,22 +25,22 @@ export const MemberJourney = ({ member, activeSession, logs, discussionPoints, q
             action: 'Log Now'
         },
         {
-            id: 'engagement',
-            label: 'Join the Discussion',
-            description: 'Vote on topics or add a quote.',
-            icon: MessageSquare,
-            path: '/', // Dashboard has the widget
-            isComplete: hasDiscussed && hasLoggedToday, // Only suggest after logging
-            action: 'Go to Dashboard'
+            id: 'rating',
+            label: 'Rate this Book',
+            description: 'Share your opinion on the library.',
+            icon: Star, // Changed icon to Star
+            path: '/books',
+            isComplete: false, // Always available for now
+            action: 'Go to Library'
         },
         {
-            id: 'review',
-            label: 'Peer Review',
-            description: 'Support your fellow members.',
-            icon: User,
-            path: '/peer-review',
-            isComplete: false, // Hard to automate "completeness" without more data, so always open
-            action: 'Review Peers'
+            id: 'calendar',
+            label: 'Upcoming Events',
+            description: 'Check the schedule for next sessions.',
+            icon: Calendar,
+            path: '/events',
+            isComplete: false,
+            action: 'View Calendar'
         }
     ];
 

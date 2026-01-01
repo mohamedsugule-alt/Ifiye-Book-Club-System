@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
 import { useBookClub } from '../context/BookClubContext';
 import { Card, Badge } from '../components/ui';
-import { Settings, Users, BookOpen, Calendar, Trash2, Edit2, Plus, AlertCircle, Save, Upload, FileSpreadsheet, Tag, Search } from 'lucide-react';
+import { Settings, Users, BookOpen, Calendar, Trash2, Edit2, Plus, AlertCircle, Save, Upload, FileSpreadsheet, Tag, Search, Download, AlertTriangle } from 'lucide-react';
+import BulkImport from '../components/BulkImport';
 import * as XLSX from 'xlsx';
+import { SupabaseMigration } from '../components/SupabaseMigration';
 
 const Admin = () => {
     const { members, books, sessions, logs, updateMember, addMember, updateBook, addBook, updateSession, deleteSession, wipeDatabase, categories, addCategory, deleteCategory, exportData, importData, addSession } = useBookClub();
@@ -122,13 +124,13 @@ const Admin = () => {
         reader.readAsBinaryString(file);
     };
 
-    const handleReset = () => {
+    const handleReset = async () => {
         if (window.confirm("CRITICAL WARNING: This will delete ALL member progress, logs, and custom assets. ONLY Admin accounts will be preserved.\n\nAre you sure you want to proceed?")) {
-            wipeDatabase();
+            await wipeDatabase();
             // Force reload to clear all states and re-initialize
             setTimeout(() => {
                 window.location.reload();
-            }, 100);
+            }, 500);
         }
     };
     const handleEditBook = (b) => {
@@ -179,6 +181,12 @@ const Admin = () => {
 
     return (
         <div className="space-y-8 max-w-6xl mx-auto pb-20">
+            <h1 className="text-4xl text-white font-bold mb-8">Admin Studio</h1>
+
+            {/* Cloud Sync Tool */}
+            <SupabaseMigration />
+
+            {/* Stats Overview */}
             <div className="flex justify-between items-end">
                 <div>
                     <h2 className="text-3xl font-bold text-white mb-2">System Administration</h2>
@@ -187,7 +195,7 @@ const Admin = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex gap-4 border-b border-white/10 pb-1">
+            <div className="flex gap-4 border-b border-white/10 pb-1 overflow-x-auto custom-scrollbar">
                 <TabButton id="members" icon={Users} label="Members" active={activeTab} set={setActiveTab} />
                 <TabButton id="books" icon={BookOpen} label="Books" active={activeTab} set={setActiveTab} />
                 <TabButton id="plan" icon={Calendar} label="Plan" active={activeTab} set={setActiveTab} />
@@ -254,338 +262,350 @@ const Admin = () => {
                     </div>
                 )}
 
-                {activeTab === 'books' && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-white">Library Database</h3>
-                            <div className="flex gap-3">
-                                {/* Hidden File Input */}
-                                <input
-                                    type="file"
-                                    accept=".xlsx, .xls"
-                                    ref={fileInputRef}
-                                    onChange={handlePlanUpload}
-                                    className="hidden"
-                                />
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
-                                >
-                                    <Upload size={18} /> Upload Plan (Excel)
-                                </button>
-                                <button onClick={() => { setBookForm({}); setShowBookForm(true); }} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
-                                    <Plus size={18} /> Add Book
-                                </button>
-                            </div>
-                        </div>
-
-
-                        {showBookForm && (
-                            <div className="glass-panel text-white p-6 animate-in slide-in-from-top-4 shadow-xl">
-                                <h4 className="text-lg font-bold text-white mb-4">{bookForm.id ? 'Edit Book' : 'New Book'}</h4>
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div className="col-span-2 flex gap-2">
-                                        <input
-                                            placeholder="Book Title (e.g. Sapiens)"
-                                            className="input-glass flex-1"
-                                            value={bookForm.title || ''}
-                                            onChange={e => setBookForm({ ...bookForm, title: e.target.value })}
-                                        />
-                                        <button
-                                            onClick={async () => {
-                                                if (!bookForm.title) return;
-                                                // Quick Google Books Fetch
-                                                try {
-                                                    const q = encodeURIComponent(bookForm.title);
-                                                    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}`);
-                                                    const data = await res.json();
-                                                    if (data.items?.[0]) {
-                                                        const info = data.items[0].volumeInfo;
-                                                        setBookForm(prev => ({
-                                                            ...prev,
-                                                            title: info.title,
-                                                            author: info.authors?.[0] || prev.author,
-                                                            pages: info.pageCount || prev.pages,
-                                                            coverUrl: info.imageLinks?.thumbnail || prev.coverUrl
-                                                        }));
-                                                    } else {
-                                                        alert("Book not found.");
-                                                    }
-                                                } catch (err) {
-                                                    console.error(err);
-                                                }
-                                            }}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 rounded flex items-center gap-1 shadow-sm"
-                                            title="Auto-fill details from Google Books"
-                                        >
-                                            <Search size={16} /> Auto-Fill
-                                        </button>
-                                    </div>
-
-                                    <input placeholder="Author" className="input-glass w-full" value={bookForm.author || ''} onChange={e => setBookForm({ ...bookForm, author: e.target.value })} />
-                                    <input type="number" placeholder="Pages" className="input-glass w-full" value={bookForm.pages || ''} onChange={e => setBookForm({ ...bookForm, pages: e.target.value })} />
-                                    <select className="input-glass w-full text-black" value={bookForm.category || 'Context'} onChange={e => setBookForm({ ...bookForm, category: e.target.value })}>
-                                        {(categories || ['Context']).map(c => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
-                                    </select>
+                {
+                    activeTab === 'books' && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-white">Library Database</h3>
+                                <div className="flex gap-3">
+                                    {/* Hidden File Input */}
                                     <input
-                                        placeholder="Cover Image URL (Optional)"
-                                        className="input-glass w-full col-span-2"
-                                        value={bookForm.coverUrl || ''}
-                                        onChange={e => setBookForm({ ...bookForm, coverUrl: e.target.value })}
+                                        type="file"
+                                        accept=".xlsx, .xls"
+                                        ref={fileInputRef}
+                                        onChange={handlePlanUpload}
+                                        className="hidden"
                                     />
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={handleSaveBook} className="bg-brand-primary text-white px-4 py-2 rounded hover:bg-orange-600 shadow-sm">Save to Library</button>
-                                    <button onClick={() => setShowBookForm(false)} className="bg-white/10 text-glass-300 px-4 py-2 rounded hover:bg-white/20">Cancel</button>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                                    >
+                                        <Upload size={18} /> Upload Plan (Excel)
+                                    </button>
+                                    <button onClick={() => { setBookForm({}); setShowBookForm(true); }} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
+                                        <Plus size={18} /> Add Book
+                                    </button>
                                 </div>
                             </div>
-                        )}
 
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-white">Library Database (2026 Plan)</h3>
-                            <button onClick={() => setShowBookForm(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 transition shadow-sm">
-                                <Plus size={18} /> Add Book
-                            </button>
-                        </div>
 
-                        {/* 2026 PLAN BOOKS */}
-                        <div className="space-y-2">
-                            {books.filter(b => b.id.startsWith('B26')).map(b => (
-                                <div key={b.id} className="p-4 glass-card rounded-lg flex justify-between items-center group shadow-sm hover:shadow-md transition-all">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-bold text-white text-lg">{b.title}</p>
-                                            <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-400 bg-emerald-500/10 backdrop-blur-sm">2026</Badge>
-                                        </div>
-                                        <p className="text-sm text-glass-400">{b.author} • {b.pages} pages • <span className="text-brand-primary font-medium">{b.category}</span></p>
-                                    </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleEditBook(b)} className="p-2 hover:bg-white/10 rounded-full text-glass-500 hover:text-white transition-colors">
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                if (confirm(`Delete "${b.title}"?`)) {
-                                                    // Add deleteBook logic here if needed
-                                                }
-                                            }}
-                                            className="p-2 hover:bg-white/10 rounded-full text-glass-500 hover:text-red-400 transition-colors"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* ARCHIVED BOOKS SECTION */}
-                        <div className="mt-8 pt-8 border-t border-white/10">
-                            <h3 className="text-lg font-bold text-glass-400 mb-4 flex items-center gap-2">
-                                <BookOpen size={18} /> Archived / Revisited Books
-                            </h3>
-                            <div className="space-y-2 opacity-75">
-                                {books.filter(b => !b.id.startsWith('B26')).map(b => (
-                                    <div key={b.id} className="p-3 glass-panel border border-white/5 rounded-lg flex justify-between items-center">
-                                        <div>
-                                            <p className="font-bold text-glass-200">{b.title}</p>
-                                            <p className="text-xs text-glass-500">{b.author}</p>
-                                        </div>
-                                        <Badge variant="secondary" className="text-xs bg-white/10 text-glass-400">Archive</Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'plan' && (
-                    <div className="space-y-6">
-                        <div className="text-center py-8 text-glass-400">
-                            <h3 className="text-xl font-bold text-white mb-2">Strategic Roadmap</h3>
-                            <p>Manage session timelines and book assignments.</p>
-                        </div>
-
-                        <div className="max-w-4xl mx-auto space-y-4">
-                            {sessions.map(session => {
-                                const book = books.find(b => b.id === session.bookId);
-                                return (
-                                    <div key={session.id} className="p-4 glass-card rounded-lg flex flex-col md:flex-row gap-4 items-center justify-between group hover:shadow-md transition-all">
-
-                                        <div className="flex-1 min-w-0 text-center md:text-left">
-                                            <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
-                                                <Badge variant="default" className="text-white bg-white/10">{book?.category || 'Unknown'}</Badge>
-                                                <span className="text-xs font-mono text-glass-500">Session {session.id}</span>
-                                            </div>
-                                            <p className="font-bold text-white truncate">{book?.title || 'Unknown Book'}</p>
-                                        </div>
-
-                                        <div className="flex items-center gap-2 bg-black/20 p-2 rounded-lg border border-white/5">
-                                            <div className="flex flex-col">
-                                                <label className="text-[10px] text-glass-500 uppercase font-bold pl-1">Start Date</label>
-                                                <input
-                                                    type="date"
-                                                    className="bg-transparent text-white text-sm border-none focus:ring-0 p-1 font-medium"
-                                                    value={session.startDate}
-                                                    onChange={(e) => updateSession(session.id, { startDate: e.target.value })}
-                                                />
-                                            </div>
-                                            <span className="text-glass-500">→</span>
-                                            <div className="flex flex-col">
-                                                <label className="text-[10px] text-glass-500 uppercase font-bold pl-1">Deadline</label>
-                                                <input
-                                                    type="date"
-                                                    className="bg-transparent text-white text-sm border-none focus:ring-0 p-1 font-medium"
-                                                    value={session.endDate}
-                                                    onChange={(e) => updateSession(session.id, { endDate: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="w-px h-8 bg-white/10 mx-2"></div>
+                            {showBookForm && (
+                                <div className="glass-panel text-white p-6 animate-in slide-in-from-top-4 shadow-xl">
+                                    <h4 className="text-lg font-bold text-white mb-4">{bookForm.id ? 'Edit Book' : 'New Book'}</h4>
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="col-span-2 flex gap-2">
+                                            <input
+                                                placeholder="Book Title (e.g. Sapiens)"
+                                                className="input-glass flex-1"
+                                                value={bookForm.title || ''}
+                                                onChange={e => setBookForm({ ...bookForm, title: e.target.value })}
+                                            />
                                             <button
-                                                onClick={() => {
-                                                    if (window.confirm('Delete this session? This cannot be undone.')) {
-                                                        deleteSession(session.id);
+                                                onClick={async () => {
+                                                    if (!bookForm.title) return;
+                                                    // Quick Google Books Fetch
+                                                    try {
+                                                        const q = encodeURIComponent(bookForm.title);
+                                                        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}`);
+                                                        const data = await res.json();
+                                                        if (data.items?.[0]) {
+                                                            const info = data.items[0].volumeInfo;
+                                                            setBookForm(prev => ({
+                                                                ...prev,
+                                                                title: info.title,
+                                                                author: info.authors?.[0] || prev.author,
+                                                                pages: info.pageCount || prev.pages,
+                                                                coverUrl: info.imageLinks?.thumbnail || prev.coverUrl
+                                                            }));
+                                                        } else {
+                                                            alert("Book not found.");
+                                                        }
+                                                    } catch (err) {
+                                                        console.error(err);
                                                     }
                                                 }}
-                                                className="p-2 text-glass-500 hover:text-red-400 hover:bg-white/5 rounded transition-colors"
-                                                title="Delete Session"
+                                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 rounded flex items-center gap-1 shadow-sm"
+                                                title="Auto-fill details from Google Books"
                                             >
-                                                <Trash2 size={16} />
+                                                <Search size={16} /> Auto-Fill
                                             </button>
                                         </div>
 
+                                        <input placeholder="Author" className="input-glass w-full" value={bookForm.author || ''} onChange={e => setBookForm({ ...bookForm, author: e.target.value })} />
+                                        <input type="number" placeholder="Pages" className="input-glass w-full" value={bookForm.pages || ''} onChange={e => setBookForm({ ...bookForm, pages: e.target.value })} />
+                                        <select className="input-glass w-full text-black" value={bookForm.category || 'Context'} onChange={e => setBookForm({ ...bookForm, category: e.target.value })}>
+                                            {(categories || ['Context']).map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            placeholder="Cover Image URL (Optional)"
+                                            className="input-glass w-full col-span-2"
+                                            value={bookForm.coverUrl || ''}
+                                            onChange={e => setBookForm({ ...bookForm, coverUrl: e.target.value })}
+                                        />
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+                                    <div className="flex gap-2">
+                                        <button onClick={handleSaveBook} className="bg-brand-primary text-white px-4 py-2 rounded hover:bg-orange-600 shadow-sm">Save to Library</button>
+                                        <button onClick={() => setShowBookForm(false)} className="bg-white/10 text-glass-300 px-4 py-2 rounded hover:bg-white/20">Cancel</button>
+                                    </div>
+                                </div>
+                            )}
 
-                {activeTab === 'categories' && (
-                    <div className="space-y-6 max-w-2xl mx-auto">
-                        <div className="glass-panel text-white p-6 shadow-sm">
-                            <h3 className="text-xl font-bold text-white mb-4">Manage Book Categories</h3>
-                            <div className="flex gap-2 mb-6">
-                                <input
-                                    placeholder="New Category Name"
-                                    className="input-glass flex-1"
-                                    value={newCategory}
-                                    onChange={e => setNewCategory(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && newCategory.trim()) {
-                                            addCategory(newCategory.trim());
-                                            setNewCategory('');
-                                        }
-                                    }}
-                                />
-                                <button
-                                    onClick={() => {
-                                        if (newCategory.trim()) {
-                                            addCategory(newCategory.trim());
-                                            setNewCategory('');
-                                        }
-                                    }}
-                                    className="btn-primary bg-emerald-600 hover:bg-emerald-700 px-4 rounded-lg text-white shadow-sm"
-                                >
-                                    <Plus size={20} />
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-white">Library Database (2026 Plan)</h3>
+                                <button onClick={() => setShowBookForm(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 transition shadow-sm">
+                                    <Plus size={18} /> Add Book
                                 </button>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                                {(categories || []).map(c => (
-                                    <span key={c} className="px-3 py-1 bg-white/10 rounded-full text-glass-200 border border-white/20 flex items-center gap-2 group hover:shadow-sm transition-all hover:bg-white/20">
-                                        {c}
-                                        <button onClick={() => deleteCategory(c)} className="text-glass-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 size={12} />
-                                        </button>
-                                    </span>
+                            {/* 2026 PLAN BOOKS */}
+                            <div className="space-y-2">
+                                {books.filter(b => b.id.startsWith('B26')).map(b => (
+                                    <div key={b.id} className="p-4 glass-card rounded-lg flex justify-between items-center group shadow-sm hover:shadow-md transition-all">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-white text-lg">{b.title}</p>
+                                                <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-400 bg-emerald-500/10 backdrop-blur-sm">2026</Badge>
+                                            </div>
+                                            <p className="text-sm text-glass-400">{b.author} • {b.pages} pages • <span className="text-brand-primary font-medium">{b.category}</span></p>
+                                        </div>
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleEditBook(b)} className="p-2 hover:bg-white/10 rounded-full text-glass-500 hover:text-white transition-colors">
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`Delete "${b.title}"?`)) {
+                                                        // Add deleteBook logic here if needed
+                                                    }
+                                                }}
+                                                className="p-2 hover:bg-white/10 rounded-full text-glass-500 hover:text-red-400 transition-colors"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-                )}
 
-                {activeTab === 'settings' && (
-                    <div className="space-y-8 max-w-4xl mx-auto">
-                        <div className="glass-panel text-white p-8 space-y-6 shadow-sm">
-                            <div className="flex items-center gap-4 text-emerald-400">
-                                <div className="p-3 bg-emerald-500/10 rounded-full"><Save size={24} /></div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">Export Data</h3>
-                                    <p className="text-glass-400 text-sm">Download your data for backup or analysis.</p>
+                            {/* ARCHIVED BOOKS SECTION */}
+                            <div className="mt-8 pt-8 border-t border-white/10">
+                                <h3 className="text-lg font-bold text-glass-400 mb-4 flex items-center gap-2">
+                                    <BookOpen size={18} /> Archived / Revisited Books
+                                </h3>
+                                <div className="space-y-2 opacity-75">
+                                    {books.filter(b => !b.id.startsWith('B26')).map(b => (
+                                        <div key={b.id} className="p-3 glass-panel border border-white/5 rounded-lg flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-glass-200">{b.title}</p>
+                                                <p className="text-xs text-glass-500">{b.author}</p>
+                                            </div>
+                                            <Badge variant="secondary" className="text-xs bg-white/10 text-glass-400">Archive</Badge>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
+                        </div>
+                    )
+                }
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button onClick={() => downloadCSV('logs')} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition group">
-                                    <p className="font-bold text-white group-hover:text-brand-primary transition-colors">Reading Logs (CSV)</p>
-                                    <p className="text-xs text-glass-500">Date, Minutes, Pages</p>
-                                </button>
-                                <button onClick={() => downloadCSV('members')} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition group">
-                                    <p className="font-bold text-white group-hover:text-brand-primary transition-colors">Member List (CSV)</p>
-                                    <p className="text-xs text-glass-500">Names, Roles, Status</p>
-                                </button>
+                {
+                    activeTab === 'plan' && (
+                        <div className="space-y-6">
+                            <div className="text-center py-8 text-glass-400">
+                                <h3 className="text-xl font-bold text-white mb-2">Strategic Roadmap</h3>
+                                <p>Manage session timelines and book assignments.</p>
+                            </div>
+
+                            <div className="max-w-4xl mx-auto space-y-4">
+                                {sessions.map(session => {
+                                    const book = books.find(b => b.id === session.bookId);
+                                    return (
+                                        <div key={session.id} className="p-4 glass-card rounded-lg flex flex-col md:flex-row gap-4 items-center justify-between group hover:shadow-md transition-all">
+
+                                            <div className="flex-1 min-w-0 text-center md:text-left">
+                                                <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+                                                    <Badge variant="default" className="text-white bg-white/10">{book?.category || 'Unknown'}</Badge>
+                                                    <span className="text-xs font-mono text-glass-500">Session {session.id}</span>
+                                                </div>
+                                                <p className="font-bold text-white truncate">{book?.title || 'Unknown Book'}</p>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 bg-black/20 p-2 rounded-lg border border-white/5">
+                                                <div className="flex flex-col">
+                                                    <label className="text-[10px] text-glass-500 uppercase font-bold pl-1">Start Date</label>
+                                                    <input
+                                                        type="date"
+                                                        className="bg-transparent text-white text-sm border-none focus:ring-0 p-1 font-medium"
+                                                        value={session.startDate}
+                                                        onChange={(e) => updateSession(session.id, { startDate: e.target.value })}
+                                                    />
+                                                </div>
+                                                <span className="text-glass-500">→</span>
+                                                <div className="flex flex-col">
+                                                    <label className="text-[10px] text-glass-500 uppercase font-bold pl-1">Deadline</label>
+                                                    <input
+                                                        type="date"
+                                                        className="bg-transparent text-white text-sm border-none focus:ring-0 p-1 font-medium"
+                                                        value={session.endDate}
+                                                        onChange={(e) => updateSession(session.id, { endDate: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="w-px h-8 bg-white/10 mx-2"></div>
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm('Delete this session? This cannot be undone.')) {
+                                                            deleteSession(session.id);
+                                                        }
+                                                    }}
+                                                    className="p-2 text-glass-500 hover:text-red-400 hover:bg-white/5 rounded transition-colors"
+                                                    title="Delete Session"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
+                    )
+                }
 
-                        <div className="glass-panel border-red-500/30 p-8 space-y-6">
-                            <div className="flex items-center gap-4 text-red-400 mb-2">
-                                <div className="p-3 bg-red-500/10 rounded-full"><AlertCircle size={24} /></div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">Database Management</h3>
-                                    <p className="text-glass-400 text-sm">Backup, Restore, or Reset.</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="glass-card p-6 flex flex-col items-center text-center shadow-sm">
-                                    <Save className="text-emerald-500 mb-3" size={32} />
-                                    <h4 className="font-bold text-white mb-2">Backup</h4>
-                                    <p className="text-xs text-glass-400 mb-4">Download full JSON backup.</p>
-                                    <button onClick={exportData} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded transition text-sm shadow-sm">
-                                        Download
+                {
+                    activeTab === 'categories' && (
+                        <div className="space-y-6 max-w-2xl mx-auto">
+                            <div className="glass-panel text-white p-6 shadow-sm">
+                                <h3 className="text-xl font-bold text-white mb-4">Manage Book Categories</h3>
+                                <div className="flex gap-2 mb-6">
+                                    <input
+                                        placeholder="New Category Name"
+                                        className="input-glass flex-1"
+                                        value={newCategory}
+                                        onChange={e => setNewCategory(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && newCategory.trim()) {
+                                                addCategory(newCategory.trim());
+                                                setNewCategory('');
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (newCategory.trim()) {
+                                                addCategory(newCategory.trim());
+                                                setNewCategory('');
+                                            }
+                                        }}
+                                        className="btn-primary bg-emerald-600 hover:bg-emerald-700 px-4 rounded-lg text-white shadow-sm"
+                                    >
+                                        <Plus size={20} />
                                     </button>
                                 </div>
 
-                                <div className="glass-card p-6 flex flex-col items-center text-center shadow-sm">
-                                    <Upload className="text-blue-500 mb-3" size={32} />
-                                    <h4 className="font-bold text-white mb-2">Restore</h4>
-                                    <p className="text-xs text-glass-400 mb-4">Overwrite data from JSON.</p>
-                                    <div className="relative w-full">
-                                        <input
-                                            type="file"
-                                            accept=".json"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                            onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                if (!file) return;
-                                                const reader = new FileReader();
-                                                reader.onload = (evt) => importData(evt.target.result);
-                                                reader.readAsText(file);
-                                                e.target.value = null;
-                                            }}
-                                        />
-                                        <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded transition text-sm border border-white/10">
-                                            Select File
-                                        </button>
+                                <div className="flex flex-wrap gap-2">
+                                    {(categories || []).map(c => (
+                                        <span key={c} className="px-3 py-1 bg-white/10 rounded-full text-glass-200 border border-white/20 flex items-center gap-2 group hover:shadow-sm transition-all hover:bg-white/20">
+                                            {c}
+                                            <button onClick={() => deleteCategory(c)} className="text-glass-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'settings' && (
+                        <div className="space-y-8 max-w-4xl mx-auto">
+                            <div className="glass-panel text-white p-8 space-y-6 shadow-sm">
+                                <div className="flex items-center gap-4 text-emerald-400">
+                                    <div className="p-3 bg-emerald-500/10 rounded-full"><Save size={24} /></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Export Data</h3>
+                                        <p className="text-glass-400 text-sm">Download your data for backup or analysis.</p>
                                     </div>
                                 </div>
 
-                                <div className="glass-card p-6 flex flex-col items-center text-center border-red-500/30 shadow-sm">
-                                    <AlertCircle className="text-red-500 mb-3" size={32} />
-                                    <h4 className="font-bold text-white mb-2">Reset</h4>
-                                    <p className="text-xs text-glass-400 mb-4">Wipe all data.</p>
-                                    <button onClick={handleReset} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-bold py-2 rounded transition text-sm">
-                                        Factory Reset
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button onClick={() => downloadCSV('logs')} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition group">
+                                        <p className="font-bold text-white group-hover:text-brand-primary transition-colors">Reading Logs (CSV)</p>
+                                        <p className="text-xs text-glass-500">Date, Minutes, Pages</p>
+                                    </button>
+                                    <button onClick={() => downloadCSV('members')} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition group">
+                                        <p className="font-bold text-white group-hover:text-brand-primary transition-colors">Member List (CSV)</p>
+                                        <p className="text-xs text-glass-500">Names, Roles, Status</p>
                                     </button>
                                 </div>
                             </div>
+
+                            <div className="glass-panel p-6 border-blue-500/20">
+                                <BulkImport />
+                            </div>
+
+                            <div className="glass-panel border-red-500/30 p-8 space-y-6">
+                                <div className="flex items-center gap-4 text-red-400 mb-2">
+                                    <div className="p-3 bg-red-500/10 rounded-full"><AlertCircle size={24} /></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Database Management</h3>
+                                        <p className="text-glass-400 text-sm">Backup, Restore, or Reset.</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="glass-card p-6 flex flex-col items-center text-center shadow-sm">
+                                        <Save className="text-emerald-500 mb-3" size={32} />
+                                        <h4 className="font-bold text-white mb-2">Backup</h4>
+                                        <p className="text-xs text-glass-400 mb-4">Download full JSON backup.</p>
+                                        <button onClick={exportData} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded transition text-sm shadow-sm">
+                                            Download
+                                        </button>
+                                    </div>
+
+                                    <div className="glass-card p-6 flex flex-col items-center text-center shadow-sm">
+                                        <Upload className="text-blue-500 mb-3" size={32} />
+                                        <h4 className="font-bold text-white mb-2">Restore</h4>
+                                        <p className="text-xs text-glass-400 mb-4">Overwrite data from JSON.</p>
+                                        <div className="relative w-full">
+                                            <input
+                                                type="file"
+                                                accept=".json"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={(e) => {
+                                                    const file = e.target.files[0];
+                                                    if (!file) return;
+                                                    const reader = new FileReader();
+                                                    reader.onload = (evt) => importData(evt.target.result);
+                                                    reader.readAsText(file);
+                                                    e.target.value = null;
+                                                }}
+                                            />
+                                            <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded transition text-sm border border-white/10">
+                                                Select File
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="glass-card p-6 flex flex-col items-center text-center border-red-500/30 shadow-sm">
+                                        <AlertCircle className="text-red-500 mb-3" size={32} />
+                                        <h4 className="font-bold text-white mb-2">Reset</h4>
+                                        <p className="text-xs text-glass-400 mb-4">Wipe all data.</p>
+                                        <button onClick={handleReset} className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-bold py-2 rounded transition text-sm">
+                                            Factory Reset
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
-        </div>
+                    )
+                }
+            </div >
+        </div >
     );
 };
 
